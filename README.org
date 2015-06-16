@@ -1,0 +1,35 @@
+#+TITLE: Shaolin, Coding Challenges for Fun and Profit
+#+AUTHOR: Hubert Behaghel
+#+EMAIL: behaghel@gmail.com
+#+LANGUAGE: en
+#+OPTIONS: H:4 toc:3 ^:{}
+#+COLUMNS: %25ITEM %TAGS %PRIORITY %TODO
+#+LATEX_HEADER: \usepackage[usenames,hyperref]{xcolor}
+#+LATEX_CLASS_OPTIONS: [colorlinks, linkcolor=red, urlcolor=blue]
+
+* Motivation
+Initially something asked on the side by the HR team in my company to
+entertain and detect smart people at the stand during Devoxx
+London 2015.
+
+* Maintainer
+| Hubert Behaghel | [[http://twitter.com/behaghel][@behaghel]] | [[mailto:behaghel@gmail.com][behaghel@gmail.com]] |
+
+* Contributing
+** Prerequisites
+- install GitHub CLI [[https://hub.github.com/][hub]]
+** Workflow
+#+BEGIN_SRC bash
+hub clone behaghel/shaolin
+cd shaolin
+git checkout -b my-feature
+# code a lot with thorough awesome tests
+sbt test
+git commit -m "Genius feature!"
+hub fork
+hub push YOUR_GITHUB_LOGIN my-feature
+hub pull-request
+#+END_SRC bash
+
+* License
+This software is under [[http://opensource.org/licenses/BSD-3-Clause][BSD 3 license]].
