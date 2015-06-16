@@ -32,14 +32,20 @@ val sprayJson = "io.spray" %%  "spray-json" % "1.3.2"
 // "io.spray" %%  "spray-client" % sprayVersion
 Revolver.settings
 
-libraryDependencies ++= Seq(sbtrcClient, //sbtrcIntegration,
+libraryDependencies ++= Seq(//sbtrcClient, //sbtrcIntegration,
                             akka, akkaTesting, akkaLogging, slf4j, logback,
                             sprayCan, sprayRouting, sprayJson)
 
 
 enablePlugins(JavaAppPackaging)
 
-initialCommands in console := """
+libraryDependencies += "com.lihaoyi" % "ammonite-repl" % "0.3.2" % "test" cross CrossVersion.full
+
+initialCommands in (Test, console) := """ammonite.repl.Repl.run("")"""
+
+libraryDependencies += "com.lihaoyi" %% "ammonite-ops" % "0.3.2" % "test"
+
+val formerInitialCommands = """
 import akka.actor._
 import akka.pattern.ask
 import shaolin.SbtBridge

@@ -3,6 +3,13 @@
 /project/*-shim.sbt
 /project/project/
 /project/target/
-/target/
+/target/*
+!/target/universal
+/target/universal/*
+!/target/universal/stage
+/target/universal/stage/*
+!/target/universal/stage/bin
+/target/universal/stage/bin/*.bat
 /.ensime_cache/
 /.history
+/lib.old/
