@@ -9,5 +9,6 @@ public class PalindromeTest {
         assertTrue("Single word, any case", Palindrome.isPalindrome("RadAr"));
         assertTrue("Sentence", Palindrome.isPalindrome("Max, I stay away at six A.M."));
         assertTrue("Sentence", Palindrome.isPalindrome("Noel, did I not rub Burton? I did, Leon."));
+        //FIXME: test non-palindrome words/sentences
     }
 }

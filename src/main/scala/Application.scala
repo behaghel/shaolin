@@ -1,15 +1,14 @@
 package shaolin
 
 import java.io.File
-import scala.util.Failure
-import scala.util.Properties
+import scala.util.{Success, Failure, Properties}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import akka.actor.{ActorSystem, Props, Actor, ActorRef}
 import akka.util.Timeout
 import akka.event.Logging.InfoLevel
 import akka.io.IO
 import akka.pattern.ask
-import scala.util.Success
 import spray.routing.directives.LogEntry
 import spray.can.Http
 import spray.routing._
@@ -24,6 +23,8 @@ object Application extends App {
   // implicit val ctx = system.dispatcher
 
   val service = system.actorOf(Props[ChallengerApiActor], "challenger-api")
+
+  // $PORT is how heroku passes it
   val port = Properties.envOrElse("PORT", "8080").toInt
   IO(Http) ! Http.Bind(service, interface = "0.0.0.0", port = port)
 }
@@ -39,43 +40,66 @@ class ChallengerApiActor extends Actor with ChallengerApi {
   // def routeWithLogging = logRequestResponse(requestMethodAndResponseStatusAsInfo _)(apiRoute)
   // def receive = runRoute(routeWithLogging)
   def receive = runRoute(apiRoute)
+
+  def createJury(filename: String) = {
+    actorRefFactory.actorOf(Jury.props(filename))
+  }
 }
 
 trait ChallengerApi extends HttpService {
   implicit def executionContext = actorRefFactory.dispatcher
+  implicit val timeout = Timeout(2 minutes) // whatever you need lovely sbt
 
-  val scaffolder = Scaffolder("/tmp/shaolin")
-  var counter = 1
+  import SbtBridge._
+
+  import Jury._
+  var jurys: Map[String, ActorRef] = Map.empty
+  def createJury(filename: String): ActorRef
+
   val logger = implicitly[spray.util.LoggingContext]
-  implicit val timeout = Timeout(2 minutes)
+  lazy val random = new scala.util.Random()
+  def genToken() = random.alphanumeric.take(6).mkString
 
+  val tokenName = "shaolin-token"
   val apiRoute =
     get {
       pathSingleSlash {
         complete(index)
       } ~
-    path("js" / "submit.js") {
-      getFromResource("js/submit.js")
-        }
+      pathPrefix("js") { getFromResourceDirectory("js/") }
     } ~
       post {
         path("submission" / "Palindrome.java") {
           entity(as[String]) { code =>
-            val project = scaffolder.makeSbtProject(s"submission-$counter")
-            project.addFile("Palindrome.java", code)
-            project.addResource("/questions/PalindromeTest.java")
-            val bridge = actorRefFactory.actorOf(SbtBridge.props(project.baseDir))
-            import SbtBridge._
-            val result = bridge ? Test
-            complete {
-              result collect {
-                case SbtSuccess(Test) => "Success!"
-                case SbtFailure(Test) => "You failed!"
+            optionalCookie(tokenName) { tokenOpt =>
+              tokenOpt match {
+                case Some(token) =>
+                  completeAssessment(jurys(token.content), code)
+                case None =>
+                  val token = genToken()
+                  // TODO: cookie should expire
+                  setCookie(HttpCookie(tokenName, token)) {
+                    val newJury = createJury("Palindrome.java")
+                    jurys += token -> newJury
+                    completeAssessment(newJury, code)
+                  }
               }
             }
           }
-        }
+        } ~
+          path("hello") {
+            complete(OK)
+          }
       }
+
+  def completeAssessment(jury: ActorRef, code: String) =
+    complete {
+      (jury ? Assess(code)) collect {
+        case SbtSuccess(Test(_)) => "Success!"
+        case SbtFailure(Test(_)) => "You failed!"
+        case JuryFatal(e) => e.getMessage()
+      }
+    }
 
   lazy val index =
     <html>

@@ -14,8 +14,9 @@ object SbtBridge {
   case object CloseClient extends BridgeOp
   sealed trait Command extends BridgeOp {
     def sbtName: String
+    def requester: ActorRef
   }
-  case object Test extends Command {
+  case class Test(requester: ActorRef) extends Command {
     def sbtName = "test"
   }
 
@@ -39,7 +40,7 @@ class SbtBridge(location: File) extends Actor with ActorLogging {
   @volatile
   var startedConnecting = System.currentTimeMillis()
   var client: Option[SbtClient] = None
-  var pending: Option[(Command, ActorRef)] = None
+  var pending: Option[Command] = None
 
   log.debug("Opening SbtConnector")
 
@@ -66,15 +67,15 @@ class SbtBridge(location: File) extends Actor with ActorLogging {
       client foreach { _ handleEvents eventListener }
       pending match {
         case None => context.become(idle)
-        case Some((cmd, _)) => handleCommand(cmd)
+        case Some(cmd) => handleCommand(cmd)
       }
-    case Test =>
-      pending = Some((Test, context.sender))
+    case test@Test(_) =>
+      pending = Some(test)
   }
 
   def idle: Receive = {
     case cmd: Command =>
-      pending = Some((cmd, context.sender))
+      pending = Some(cmd)
       handleCommand(cmd)
     case CloseClient =>
       log.debug(s"Client closed")
@@ -88,15 +89,13 @@ class SbtBridge(location: File) extends Actor with ActorLogging {
 
   def handleResult(e: ExecutionEngineEvent) = {
     (e, pending) match {
-      case (_: ExecutionSuccess, Some((op, requester))) =>
-        requester ! SbtSuccess(op)
-      case (_: ExecutionFailure, Some((op, requester))) =>
-        requester ! SbtFailure(op)
+      case (_: ExecutionSuccess, Some(op)) =>
+        op.requester ! SbtSuccess(op)
+      case (_: ExecutionFailure, Some(op)) =>
+        op.requester ! SbtFailure(op)
     }
-    self ! PoisonPill
-    // for now SbtBrigde ! Command acts as a transaction and auto-destruct after the answer
-    // pending = None
-    // context.become(idle)
+    pending = None
+    context.become(idle)
   }
 
   def handleCommand(cmd: Command) = {

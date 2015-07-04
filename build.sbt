@@ -28,13 +28,17 @@ val logback = "ch.qos.logback" % "logback-classic" % "1.1.3"
 val sprayVersion = "1.3.3"
 val sprayCan = "io.spray" %% "spray-can" % sprayVersion
 val sprayRouting = "io.spray" %% "spray-routing" % sprayVersion
+val sprayTestkit = "io.spray" %% "spray-testkit" % sprayVersion % "test"
 val sprayJson = "io.spray" %%  "spray-json" % "1.3.2"
 // "io.spray" %%  "spray-client" % sprayVersion
 Revolver.settings
 
-libraryDependencies ++= Seq(//sbtrcClient, //sbtrcIntegration,
+libraryDependencies ++= Seq(//sbtrcClient, << UNCOMMENT once available from Heroku
+                            // https://github.com/typesafehub/activator/issues/979
+                            // https://github.com/sbt/sbt/issues/2054
+                            //sbtrcIntegration,
                             akka, akkaTesting, akkaLogging, slf4j, logback,
-                            sprayCan, sprayRouting, sprayJson)
+                            sprayCan, sprayRouting, sprayTestkit, sprayJson)
 
 
 enablePlugins(JavaAppPackaging)

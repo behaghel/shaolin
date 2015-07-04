@@ -12,8 +12,8 @@ class Scaffolder(scratchDir: File) {
   def makeSbtProject(relativeDir: String): SbtProject =
     SbtProject(new File(scratchDir, relativeDir))
 
-  def makeSimpleSbtProject(relativeDir: String): SbtProject = {
-    val project = SbtProject(new File(scratchDir, relativeDir))
+  def makeSimpleSbtProject(relativeDir: String)(implicit ec: scala.concurrent.ExecutionContext): SbtProject = {
+    val project = SbtProject.bootstrap(new File(scratchDir, relativeDir))
     val mainContent = "object Main extends App { println(\"Hello World\") }\n"
     project.addFile("Hello.scala", mainContent)
 
@@ -37,8 +37,9 @@ class SecondPassTest {
   }
 
   /** Creates a dummy project we can run sbt against. */
-  def makeFailingSbtProject(relativeDir: String): SbtProject = {
-    val project = SbtProject(new File(scratchDir, relativeDir))
+  def makeFailingSbtProject(relativeDir: String)(implicit ec: scala.concurrent.ExecutionContext): SbtProject = {
+    val project = SbtProject.bootstrap(new File(scratchDir, relativeDir))
+    project.init()
 
     val mainContent = "object Main extends App { println(\"Hello World\") }\n"
     project.addFile("Hello.scala", mainContent)
@@ -76,6 +77,8 @@ class OneFailTest {
 }
 
 object Scaffolder {
+  def apply(): Scaffolder =
+    new Scaffolder(java.nio.file.Files.createTempDirectory("shaolin-").toFile())
   def apply(path: String): Scaffolder =
     new Scaffolder(ensureDirCreated(new File(path)))
 }
